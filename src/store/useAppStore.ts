@@ -164,12 +164,9 @@ export const useImages = () => useAppStore((state) => state.images);
 // Select only settings
 export const useSettings = () => useAppStore((state) => state.settings);
 
-// Select only UI state
-export const useGenerationState = () =>
-  useAppStore((state) => ({
-    isGenerating: state.isGenerating,
-    progress: state.progress,
-  }));
+// Select only UI state - split into separate selectors to avoid object creation
+export const useIsGenerating = () => useAppStore((state) => state.isGenerating);
+export const useProgress = () => useAppStore((state) => state.progress);
 
 // Select image count
 export const useImageCount = () =>

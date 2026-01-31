@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, FileImage } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -6,58 +6,12 @@ import { useAppStore } from '@/store/useAppStore';
 import { selectImages, validateImages, getImageInfo, getImageThumbnail } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export function ImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { addImages, updateImageInfo, updateImageThumbnail } = useAppStore();
-
-  // Handle drag events
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    const paths = files.map((file) => {
-      // In Tauri, we need to use the file path
-      // For now, we'll use the file name, but in real Tauri app this will be handled differently
-      return (file as any).path || file.name;
-    });
-
-    if (paths.length > 0) {
-      await processImages(paths);
-    }
-  };
-
-  // Handle file selection via button
-  const handleSelectFiles = async () => {
-    try {
-      const paths = await selectImages();
-
-      if (!paths || paths.length === 0) {
-        return;
-      }
-
-      await processImages(paths);
-    } catch (err) {
-      toast.error('Ошибка при выборе файлов', {
-        description: String(err),
-      });
-    }
-  };
 
   // Process selected images
   const processImages = async (paths: string[]) => {
@@ -110,6 +64,53 @@ export function ImageUploader() {
     }
   };
 
+  // Setup Tauri file drop listener
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+
+    const unlisten = appWindow.onDragDropEvent((event) => {
+      if (event.payload.type === 'over') {
+        setIsDragging(true);
+      } else if (event.payload.type === 'drop') {
+        setIsDragging(false);
+        const paths = event.payload.paths;
+        if (paths && paths.length > 0) {
+          processImages(paths);
+        }
+      } else if (event.payload.type === 'leave') {
+        setIsDragging(false);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Prevent default drag behavior on the card
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Handle file selection via button
+  const handleSelectFiles = async () => {
+    try {
+      const paths = await selectImages();
+
+      if (!paths || paths.length === 0) {
+        return;
+      }
+
+      await processImages(paths);
+    } catch (err) {
+      toast.error('Ошибка при выборе файлов', {
+        description: String(err),
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card
@@ -119,8 +120,6 @@ export function ImageUploader() {
           isLoading && 'opacity-50 cursor-not-allowed'
         )}
         onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
       >
         <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
           <div

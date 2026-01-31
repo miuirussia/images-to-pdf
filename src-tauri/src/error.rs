@@ -14,6 +14,9 @@ pub enum AppError {
     #[error("Failed to read image: {0}")]
     ImageReadError(String),
 
+    #[error("Image processing error: {0}")]
+    ImageProcessingError(String),
+
     #[error("Image file too large: {0} bytes (max 50 MB)")]
     ImageTooLarge(u64),
 

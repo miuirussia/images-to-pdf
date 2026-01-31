@@ -1,36 +1,26 @@
-import { useState } from 'react';
 import { FileDown } from 'lucide-react';
 import { Button } from './ui/button';
-import { Alert, AlertDescription } from './ui/alert';
 import { useCanGenerate, useImages, useSettings, useAppStore } from '@/store/useAppStore';
 import { selectOutputPath, generatePdf } from '@/lib/tauri';
+import { toast } from 'sonner';
 
 export function ExportButton() {
   const canGenerate = useCanGenerate();
   const images = useImages();
   const settings = useSettings();
   const { setIsGenerating, setProgress } = useAppStore();
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleExport = async () => {
-    setResult(null);
-
     // Check if we have images
     if (images.length === 0) {
-      setResult({
-        success: false,
-        message: 'Нет изображений для экспорта',
-      });
+      toast.error('Нет изображений для экспорта');
       return;
     }
 
     // Validate custom page size if needed
     if (settings.pageSize === 'Custom') {
       if (!settings.customWidth || !settings.customHeight) {
-        setResult({
-          success: false,
-          message: 'Укажите ширину и высоту для пользовательского размера',
-        });
+        toast.error('Укажите ширину и высоту для пользовательского размера');
         return;
       }
     }
@@ -70,9 +60,8 @@ export function ExportButton() {
       setProgress(100);
 
       if (generationResult.success) {
-        setResult({
-          success: true,
-          message: `PDF успешно создан: ${outputPath}`,
+        toast.success('PDF успешно создан', {
+          description: outputPath,
         });
 
         // Keep progress dialog visible for a moment to show 100%
@@ -80,16 +69,14 @@ export function ExportButton() {
           setIsGenerating(false);
         }, 500);
       } else {
-        setResult({
-          success: false,
-          message: `Ошибка при создании PDF: ${generationResult.error}`,
+        toast.error('Ошибка при создании PDF', {
+          description: generationResult.error,
         });
         setIsGenerating(false);
       }
     } catch (error) {
-      setResult({
-        success: false,
-        message: `Ошибка: ${error}`,
+      toast.error('Ошибка при создании PDF', {
+        description: String(error),
       });
       setIsGenerating(false);
     }
@@ -111,14 +98,6 @@ export function ExportButton() {
         <p className="text-sm text-muted-foreground text-center">
           Добавьте изображения для создания PDF
         </p>
-      )}
-
-      {result && (
-        <Alert variant={result.success ? 'default' : 'destructive'}>
-          <AlertDescription className="text-sm">
-            {result.message}
-          </AlertDescription>
-        </Alert>
       )}
     </div>
   );

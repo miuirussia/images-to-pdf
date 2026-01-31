@@ -28,6 +28,9 @@ serde_json = "1"
 # Image processing
 image = "0.25"
 
+# Image optimization
+oxipng = "9"
+
 # PDF generation
 lopdf = "0.34"
 

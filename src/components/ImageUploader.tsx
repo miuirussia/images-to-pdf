@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { Upload, FileImage } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Alert, AlertDescription } from './ui/alert';
 import { useAppStore } from '@/store/useAppStore';
 import { selectImages, validateImages, getImageInfo } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function ImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>('');
   const { addImages, updateImageInfo } = useAppStore();
 
   // Handle drag events
@@ -45,8 +44,6 @@ export function ImageUploader() {
 
   // Handle file selection via button
   const handleSelectFiles = async () => {
-    setError('');
-
     try {
       const paths = await selectImages();
 
@@ -56,14 +53,15 @@ export function ImageUploader() {
 
       await processImages(paths);
     } catch (err) {
-      setError(`Ошибка при выборе файлов: ${err}`);
+      toast.error('Ошибка при выборе файлов', {
+        description: String(err),
+      });
     }
   };
 
   // Process selected images
   const processImages = async (paths: string[]) => {
     setIsLoading(true);
-    setError('');
 
     try {
       // Validate images
@@ -71,12 +69,12 @@ export function ImageUploader() {
 
       // Show errors for invalid files
       if (validation.invalid.length > 0) {
-        const errorMessages = validation.invalid
-          .map((inv) => `${inv.path}: ${inv.error}`)
-          .join('\n');
-        setError(
-          `Невалидные файлы (${validation.invalid.length}):\n${errorMessages}`
-        );
+        validation.invalid.forEach((inv) => {
+          const fileName = inv.path.split('/').pop() || inv.path;
+          toast.error('Невалидный файл', {
+            description: `${fileName}: ${inv.error}`,
+          });
+        });
       }
 
       // Add valid images to store
@@ -94,12 +92,15 @@ export function ImageUploader() {
           }
         }
 
-        if (validation.invalid.length === 0) {
-          setError(''); // Clear any previous errors
-        }
+        // Show success message
+        toast.success('Изображения загружены', {
+          description: `Добавлено: ${validation.valid.length}`,
+        });
       }
     } catch (err) {
-      setError(`Ошибка при обработке изображений: ${err}`);
+      toast.error('Ошибка при обработке изображений', {
+        description: String(err),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -153,14 +154,6 @@ export function ImageUploader() {
           </div>
         </CardContent>
       </Card>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="whitespace-pre-wrap text-sm">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 }

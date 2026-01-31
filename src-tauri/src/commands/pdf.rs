@@ -1,7 +1,9 @@
 use crate::error::{AppError, Result};
 use crate::utils::validation::validate_image;
+use crate::utils::optimize::optimize_image;
 use lopdf::{content::Content, dictionary, Document, Object, Stream};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 // ============================================================================
 // Types (must match TypeScript types exactly)
@@ -156,6 +158,39 @@ fn calculate_image_placement(
 }
 
 // ============================================================================
+// Image Optimization Helper
+// ============================================================================
+
+/// Create optimized version of an image in a temporary file
+///
+/// Returns Some(temp_path) if optimization was successful, None if not needed
+fn create_optimized_image(input_path: &Path) -> Result<Option<PathBuf>> {
+    // Check if the image format supports optimization
+    let format = image::ImageFormat::from_path(input_path).ok();
+
+    match format {
+        Some(image::ImageFormat::Png) | Some(image::ImageFormat::Jpeg) => {
+            // Create temporary file
+            let temp_dir = std::env::temp_dir();
+            let file_name = input_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("temp");
+            let temp_path = temp_dir.join(format!("optimized_{}", file_name));
+
+            // Optimize image (quality 85 for JPEG)
+            optimize_image(input_path, &temp_path, 85)?;
+
+            Ok(Some(temp_path))
+        }
+        _ => {
+            // For other formats, don't optimize
+            Ok(None)
+        }
+    }
+}
+
+// ============================================================================
 // PDF Generation
 // ============================================================================
 
@@ -242,14 +277,26 @@ fn add_image_page(
     // Validate image
     validate_image(image_path)?;
 
+    // Optimize image before adding to PDF
+    let input_path = Path::new(image_path);
+    let optimized_path = create_optimized_image(input_path)?;
+
+    // Use optimized image for PDF
+    let image_to_use = optimized_path.as_deref().unwrap_or(input_path);
+
     // Load image
-    let img = image::open(image_path)?;
+    let img = image::open(image_to_use)?;
     let img_width = img.width();
     let img_height = img.height();
 
     // Convert to RGB8
     let img_rgb = img.to_rgb8();
     let raw_data = img_rgb.into_raw();
+
+    // Cleanup temporary file if it was created
+    if let Some(temp_path) = optimized_path {
+        std::fs::remove_file(temp_path).ok(); // Ignore cleanup errors
+    }
 
     // Calculate placement
     let placement = calculate_image_placement(

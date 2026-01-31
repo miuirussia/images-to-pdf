@@ -31,6 +31,19 @@ export async function getImageInfo(path: string): Promise<ImageInfo> {
   return await invoke<ImageInfo>('get_image_info', { path });
 }
 
+/**
+ * Get image thumbnail as base64 data URL
+ * @param path - Absolute file path to the image
+ * @param size - Thumbnail size (default: 96)
+ * @returns Base64 encoded data URL
+ */
+export async function getImageThumbnail(
+  path: string,
+  size: number = 96
+): Promise<string> {
+  return await invoke<string>('get_image_thumbnail', { path, size });
+}
+
 // ============================================================================
 // PDF Generation
 // ============================================================================

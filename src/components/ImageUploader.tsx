@@ -3,14 +3,14 @@ import { Upload, FileImage } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { useAppStore } from '@/store/useAppStore';
-import { selectImages, validateImages, getImageInfo } from '@/lib/tauri';
+import { selectImages, validateImages, getImageInfo, getImageThumbnail } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export function ImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { addImages, updateImageInfo } = useAppStore();
+  const { addImages, updateImageInfo, updateImageThumbnail } = useAppStore();
 
   // Handle drag events
   const handleDragOver = (e: React.DragEvent) => {
@@ -81,12 +81,16 @@ export function ImageUploader() {
       if (validation.valid.length > 0) {
         addImages(validation.valid);
 
-        // Fetch metadata for each valid image
+        // Fetch metadata and thumbnail for each valid image
         for (const path of validation.valid) {
           try {
+            // Get image info
             const info = await getImageInfo(path);
-            // Find the image by path and update its info
             updateImageInfo(path, info);
+
+            // Get thumbnail
+            const thumbnail = await getImageThumbnail(path, 96);
+            updateImageThumbnail(path, thumbnail);
           } catch (err) {
             console.error(`Failed to get info for ${path}:`, err);
           }

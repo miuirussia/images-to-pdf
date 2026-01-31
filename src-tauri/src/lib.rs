@@ -4,7 +4,7 @@ mod error;
 mod utils;
 
 // Re-export for convenience
-use commands::image::{get_image_info, validate_images};
+use commands::image::{get_image_info, get_image_thumbnail, validate_images};
 use commands::pdf::generate_pdf;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,6 +16,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             validate_images,
             get_image_info,
+            get_image_thumbnail,
             generate_pdf
         ])
         .run(tauri::generate_context!())

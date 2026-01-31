@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::utils::validation::validate_image;
 use serde::{Deserialize, Serialize};
 
@@ -70,6 +70,35 @@ pub fn get_image_info(path: String) -> Result<ImageInfo> {
         format,
         size_bytes,
     })
+}
+
+/// Get image thumbnail as base64 data URL
+#[tauri::command]
+pub fn get_image_thumbnail(path: String, size: u32) -> Result<String> {
+    // Validate first
+    validate_image(&path)?;
+
+    // Open image
+    let img = image::open(&path)
+        .map_err(|e| AppError::ImageReadError(format!("Failed to open image: {}", e)))?;
+
+    // Create thumbnail (maintaining aspect ratio)
+    let thumbnail = img.thumbnail(size, size);
+
+    // Convert to PNG bytes
+    let mut png_bytes: Vec<u8> = Vec::new();
+    thumbnail
+        .write_to(
+            &mut std::io::Cursor::new(&mut png_bytes),
+            image::ImageFormat::Png,
+        )
+        .map_err(|e| AppError::ImageProcessingError(format!("Failed to encode thumbnail: {}", e)))?;
+
+    // Convert to base64
+    let base64_string = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &png_bytes);
+
+    // Return as data URL
+    Ok(format!("data:image/png;base64,{}", base64_string))
 }
 
 #[cfg(test)]

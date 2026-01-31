@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GripVertical, X } from 'lucide-react';
+import { GripVertical, X, ImageIcon } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { useAppStore } from '@/store/useAppStore';
@@ -53,6 +53,19 @@ export function ImageItem({ image }: ImageItemProps) {
             {...listeners}
           >
             <GripVertical className="w-5 h-5" />
+          </div>
+
+          {/* Image preview */}
+          <div className="flex-shrink-0 w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden">
+            {image.thumbnail ? (
+              <img
+                src={image.thumbnail}
+                alt={image.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <ImageIcon className="w-6 h-6 text-muted-foreground" />
+            )}
           </div>
 
           {/* File info */}

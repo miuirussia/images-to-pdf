@@ -5,6 +5,7 @@ import { ImageList } from './components/ImageList';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ExportButton } from './components/ExportButton';
 import { ProgressDialog } from './components/ProgressDialog';
+import { SettingsDialog } from './components/SettingsDialog';
 
 function App() {
   const { theme, setTheme } = useTheme();
@@ -14,31 +15,45 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Image to PDF Converter</h1>
-          <Button onClick={toggleTheme} variant="outline" size="sm">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </Button>
+      <header className="border-b flex-shrink-0">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <h1 className="text-xl lg:text-2xl font-bold">Image to PDF Converter</h1>
+          <div className="flex items-center gap-2">
+            {/* Settings dialog for mobile */}
+            <div className="lg:hidden">
+              <SettingsDialog />
+            </div>
+            {/* Theme toggle */}
+            <Button onClick={toggleTheme} variant="outline" size="sm">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left column - Image upload and list (2/3 width on desktop) */}
-            <div className="lg:col-span-2 space-y-6">
-              <ImageUploader />
-              <ImageList />
-            </div>
+      {/* Main content - scrollable */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Image upload and list */}
+              <div className="lg:col-span-2 space-y-6">
+                <ImageUploader />
+                <ImageList />
 
-            {/* Right column - Settings and export (1/3 width on desktop) */}
-            <div className="space-y-6">
-              <SettingsPanel />
-              <ExportButton />
+                {/* Mobile only - Export button */}
+                <div className="lg:hidden">
+                  <ExportButton />
+                </div>
+              </div>
+
+              {/* Desktop only - Settings and export panel */}
+              <div className="hidden lg:block space-y-6">
+                <SettingsPanel />
+                <ExportButton />
+              </div>
             </div>
           </div>
         </div>

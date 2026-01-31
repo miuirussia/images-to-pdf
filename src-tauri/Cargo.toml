@@ -37,3 +37,6 @@ lopdf = "0.34"
 # Error handling
 thiserror = "1"
 
+# Base64 encoding
+base64 = "0.22"
+

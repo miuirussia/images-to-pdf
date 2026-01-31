@@ -86,6 +86,9 @@ export interface ImageItem {
 
   /** Image metadata (populated after validation) */
   info?: ImageInfo;
+
+  /** Base64 thumbnail data URL (populated after loading) */
+  thumbnail?: string;
 }
 
 // ============================================================================

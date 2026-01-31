@@ -302,31 +302,18 @@ interface GenerationResult {
 **Конфигурация Tauri:**
 ```json
 {
-  "identifier": "com.imageconverter.app",
+  "identifier": "com.kdevlab.imageconverter",
   "productName": "Image to PDF Converter",
-  "version": "1.0.0"
+  "version": "0.0.1"
 }
 ```
 
 **Форматы дистрибутивов:**
-- Windows: MSI, NSIS installer
-- macOS: DMG, app bundle
-- Linux: AppImage, deb, rpm
+- Windows: NSIS installer
+- macOS: DMG
+- Linux: AppImage
 
 **Размер приложения:** < 20 МБ (целевой)
-
-***
-
-### 11. Зависимости Rust (Cargo.toml)
-
-```toml
-[dependencies]
-tauri = "2.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-image = "0.25"
-printpdf = "0.7"
-```
 
 ***
 

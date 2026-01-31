@@ -28,7 +28,7 @@ interface AppState {
   removeImage: (id: string) => void;
   clearImages: () => void;
   reorderImages: (startIndex: number, endIndex: number) => void;
-  updateImageInfo: (id: string, info: ImageItem['info']) => void;
+  updateImageInfo: (pathOrId: string, info: ImageItem['info']) => void;
 
   // Actions - Settings Management
   updateSettings: (settings: Partial<PdfSettings>) => void;
@@ -101,10 +101,12 @@ export const useAppStore = create<AppState>()(
         set({ images: result });
       },
 
-      updateImageInfo: (id: string, info: ImageItem['info']) => {
+      updateImageInfo: (pathOrId: string, info: ImageItem['info']) => {
         set((state) => ({
           images: state.images.map((img) =>
-            img.id === id ? { ...img, info } : img
+            img.id === pathOrId || img.path === pathOrId
+              ? { ...img, info }
+              : img
           ),
         }));
       },

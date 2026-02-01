@@ -77,6 +77,8 @@
 @layer base {
   * {
     @apply border-border;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   body {
@@ -92,5 +94,12 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+  }
+
+  /* Allow text selection in input fields */
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
   }
 }

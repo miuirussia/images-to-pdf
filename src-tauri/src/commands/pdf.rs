@@ -40,6 +40,7 @@ pub struct PdfSettings {
     pub custom_height: Option<f32>,
     pub orientation: Orientation,
     pub fit_mode: FitMode,
+    pub optimize_images: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -246,6 +247,7 @@ fn generate_pdf_internal(
             page_width,
             page_height,
             &settings.fit_mode,
+            settings.optimize_images.unwrap_or(true),
         )?;
         page_ids.push(page_id);
     }
@@ -273,30 +275,26 @@ fn add_image_page(
     page_width: f32,
     page_height: f32,
     fit_mode: &FitMode,
+    optimize: bool,
 ) -> Result<(u32, u16)> {
     // Validate image
     validate_image(image_path)?;
 
-    // Optimize image before adding to PDF
+    // Optimize image before adding to PDF (if enabled)
     let input_path = Path::new(image_path);
-    let optimized_path = create_optimized_image(input_path)?;
+    let optimized_path = if optimize {
+        create_optimized_image(input_path)?
+    } else {
+        None
+    };
 
     // Use optimized image for PDF
     let image_to_use = optimized_path.as_deref().unwrap_or(input_path);
 
-    // Load image
+    // Load image metadata
     let img = image::open(image_to_use)?;
     let img_width = img.width();
     let img_height = img.height();
-
-    // Convert to RGB8
-    let img_rgb = img.to_rgb8();
-    let raw_data = img_rgb.into_raw();
-
-    // Cleanup temporary file if it was created
-    if let Some(temp_path) = optimized_path {
-        std::fs::remove_file(temp_path).ok(); // Ignore cleanup errors
-    }
 
     // Calculate placement
     let placement = calculate_image_placement(
@@ -307,19 +305,94 @@ fn add_image_page(
         fit_mode,
     );
 
-    // Create image XObject
-    let image_id = doc.add_object(Stream::new(
-        dictionary! {
-            "Type" => "XObject",
-            "Subtype" => "Image",
-            "Width" => img_width,
-            "Height" => img_height,
-            "ColorSpace" => "DeviceRGB",
-            "BitsPerComponent" => 8,
-            "Length" => raw_data.len() as i64,
-        },
-        raw_data,
-    ));
+    // Detect image format and create compressed image stream
+    let format = image::ImageFormat::from_path(image_to_use)
+        .map_err(|e| AppError::UnsupportedFormat(format!("Cannot detect format: {}", e)))?;
+
+    let image_id = match format {
+        image::ImageFormat::Jpeg => {
+            // Use original JPEG data with DCTDecode filter
+            let jpeg_data = std::fs::read(image_to_use)?;
+
+            doc.add_object(Stream::new(
+                dictionary! {
+                    "Type" => "XObject",
+                    "Subtype" => "Image",
+                    "Width" => img_width,
+                    "Height" => img_height,
+                    "ColorSpace" => "DeviceRGB",
+                    "BitsPerComponent" => 8,
+                    "Filter" => "DCTDecode",
+                    "Length" => jpeg_data.len() as i64,
+                },
+                jpeg_data,
+            ))
+        }
+        image::ImageFormat::Png => {
+            // Always convert to RGB (handle transparency with white background)
+            let img_rgb = img.to_rgb8();
+            let raw_data = img_rgb.into_raw();
+
+            // Compress with flate
+            use std::io::Write;
+            let mut encoder = flate2::write::ZlibEncoder::new(
+                Vec::new(),
+                flate2::Compression::best()
+            );
+            encoder.write_all(&raw_data)
+                .map_err(|e| AppError::ImageProcessingError(format!("Compression failed: {}", e)))?;
+            let compressed_data = encoder.finish()
+                .map_err(|e| AppError::ImageProcessingError(format!("Compression failed: {}", e)))?;
+
+            doc.add_object(Stream::new(
+                dictionary! {
+                    "Type" => "XObject",
+                    "Subtype" => "Image",
+                    "Width" => img_width,
+                    "Height" => img_height,
+                    "ColorSpace" => "DeviceRGB",
+                    "BitsPerComponent" => 8,
+                    "Filter" => "FlateDecode",
+                    "Length" => compressed_data.len() as i64,
+                },
+                compressed_data,
+            ))
+        }
+        _ => {
+            // For other formats, convert to RGB and compress
+            let img_rgb = img.to_rgb8();
+            let raw_data = img_rgb.into_raw();
+
+            use std::io::Write;
+            let mut encoder = flate2::write::ZlibEncoder::new(
+                Vec::new(),
+                flate2::Compression::best()
+            );
+            encoder.write_all(&raw_data)
+                .map_err(|e| AppError::ImageProcessingError(format!("Compression failed: {}", e)))?;
+            let compressed_data = encoder.finish()
+                .map_err(|e| AppError::ImageProcessingError(format!("Compression failed: {}", e)))?;
+
+            doc.add_object(Stream::new(
+                dictionary! {
+                    "Type" => "XObject",
+                    "Subtype" => "Image",
+                    "Width" => img_width,
+                    "Height" => img_height,
+                    "ColorSpace" => "DeviceRGB",
+                    "BitsPerComponent" => 8,
+                    "Filter" => "FlateDecode",
+                    "Length" => compressed_data.len() as i64,
+                },
+                compressed_data,
+            ))
+        }
+    };
+
+    // Cleanup temporary file if it was created
+    if let Some(temp_path) = optimized_path {
+        std::fs::remove_file(temp_path).ok(); // Ignore cleanup errors
+    }
 
     // Create content stream to place the image
     let content = Content {
@@ -391,6 +464,7 @@ mod tests {
             custom_height: None,
             orientation: Orientation::Portrait,
             fit_mode: FitMode::Fit,
+            optimize_images: Some(true),
         };
 
         let (w, h) = get_page_dimensions(&settings).unwrap();
@@ -406,6 +480,7 @@ mod tests {
             custom_height: None,
             orientation: Orientation::Landscape,
             fit_mode: FitMode::Fit,
+            optimize_images: Some(true),
         };
 
         let (w, h) = get_page_dimensions(&settings).unwrap();
@@ -421,6 +496,7 @@ mod tests {
             custom_height: Some(200.0),
             orientation: Orientation::Portrait,
             fit_mode: FitMode::Fit,
+            optimize_images: Some(true),
         };
 
         let (w, h) = get_page_dimensions(&settings).unwrap();

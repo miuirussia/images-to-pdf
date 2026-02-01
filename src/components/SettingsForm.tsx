@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Switch } from './ui/switch';
 import { useSettings, useAppStore } from '@/store/useAppStore';
 import type { PageSize, Orientation, FitMode } from '@/types';
 
@@ -39,6 +40,10 @@ export function SettingsForm() {
     if (!isNaN(value) && value > 0) {
       updateSettings({ customHeight: value });
     }
+  };
+
+  const handleOptimizeImagesChange = (checked: boolean) => {
+    updateSettings({ optimizeImages: checked });
   };
 
   return (
@@ -154,6 +159,21 @@ export function SettingsForm() {
             </SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Image Optimization */}
+      <div className="flex items-center justify-between space-x-2">
+        <div className="space-y-0.5">
+          <Label htmlFor="optimize-images">Оптимизация изображений</Label>
+          <p className="text-xs text-muted-foreground">
+            Сжимать PNG и JPEG для уменьшения размера файла
+          </p>
+        </div>
+        <Switch
+          id="optimize-images"
+          checked={settings.optimizeImages ?? true}
+          onCheckedChange={handleOptimizeImagesChange}
+        />
       </div>
     </div>
   );

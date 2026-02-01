@@ -39,6 +39,9 @@ export interface PdfSettings {
 
   /** How to fit images on the page */
   fitMode: FitMode;
+
+  /** Enable image optimization (compression for PNG/JPEG) */
+  optimizeImages?: boolean;
 }
 
 /**
@@ -48,6 +51,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
   pageSize: 'A4',
   orientation: 'Portrait',
   fitMode: 'Fit',
+  optimizeImages: true,
 };
 
 // ============================================================================
